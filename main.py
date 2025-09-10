@@ -80,10 +80,10 @@ if "messages" not in st.session_state:
     )
 
     # 初期の英会話レベルを「初級者」に設定
-    st.session_state.englv = ct.ENGLISH_LEVEL_OPTION[0]
+    st.session_state.pre_englv = ""
 
-    # モード「日常英会話」用のChain作成
-    st.session_state.chain_basic_conversation = ft.create_chain(ct.SYSTEM_TEMPLATE_BASIC_CONVERSATION)
+    # モード「日常英会話」用のChain作成 → englv反映の為に日常英会話の箇所で作成されるように変更
+    # st.session_state.chain_basic_conversation = ft.create_chain(ct.SYSTEM_TEMPLATE_BASIC_CONVERSATION)
 
 # 初期表示
 # col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
@@ -91,14 +91,14 @@ if "messages" not in st.session_state:
 col1, col2, col3, col4 = st.columns([2, 2, 3, 3])
 with col1:
     if st.session_state.start_flg:
-        st.button("開始", use_container_width=True, type="primary")
+        st.button("英会話開始", use_container_width=True, type="primary")
     else:
-        st.session_state.start_flg = st.button("開始", use_container_width=True, type="primary")
+        st.session_state.start_flg = st.button("英会話開始", use_container_width=True, type="primary")
 with col2:
     st.session_state.speed = st.selectbox(label="再生速度", options=ct.PLAY_SPEED_OPTION, index=3, label_visibility="collapsed")
 with col3:
     st.session_state.mode = st.selectbox(label="モード", options=[ct.MODE_1, ct.MODE_2, ct.MODE_3], label_visibility="collapsed")
-    # モードを変更した際の処理
+    # モードを変更した際の処理。
     if st.session_state.mode != st.session_state.pre_mode:
         # 自動でそのモードの処理が実行されないようにする
         st.session_state.start_flg = False
@@ -116,9 +116,47 @@ with col3:
             st.session_state.shadowing_flg = False
         # チャット入力欄を非表示にする
         st.session_state.chat_open_flg = False
+
     st.session_state.pre_mode = st.session_state.mode
 with col4:
     st.session_state.englv = st.selectbox(label="英語レベル", options=ct.ENGLISH_LEVEL_OPTION, label_visibility="collapsed")
+    # 英会話レベルを変更した際の処理。各first_flgをTrueにして、chainが再作成されるようにする
+    if st.session_state.englv != st.session_state.pre_englv:
+        # 自動でそのモードの処理が実行されないようにする
+        st.session_state.start_flg = False
+        # 「日常英会話」実行中の初期化処理
+        if st.session_state.mode == ct.MODE_1:
+            st.session_state.dictation_flg = False
+            st.session_state.shadowing_flg = False
+        # 「シャドーイング」実行中の初期化処理
+        st.session_state.shadowing_count = 0
+        if st.session_state.mode == ct.MODE_2:
+            st.session_state.dictation_flg = False
+            # 英語レベルに合わせたchain再作成用のフラグ管理
+            st.session_state.shadowing_first_flg = True
+        # 「ディクテーション」実行中の初期化処理
+        st.session_state.dictation_count = 0
+        if st.session_state.mode == ct.MODE_3:
+            st.session_state.shadowing_flg = False
+            # 英語レベルに合わせたchain再作成用のフラグ管理
+            st.session_state.dictation_first_flg = True
+        # チャット入力欄を非表示にする
+        st.session_state.chat_open_flg = False
+
+    st.session_state.pre_englv = st.session_state.englv
+
+
+# フラグ確認用ログ出力
+logger.info({"状態表示": {
+    "mode": st.session_state.mode,
+    "dictation_flg": st.session_state.dictation_flg,
+    "dictation_count": st.session_state.dictation_count,
+    "shadowing_flg": st.session_state.shadowing_flg,
+    "shadowing_count": st.session_state.shadowing_count,
+    "chat_open_flg": st.session_state.chat_open_flg,
+    "englv": st.session_state.englv
+}})
+
 
 with st.chat_message("assistant", avatar="images/ai_icon.jpg"):
     st.markdown("こちらは生成AIによる音声英会話の練習アプリです。何度も繰り返し練習し、英語力をアップさせましょう。")
@@ -217,6 +255,7 @@ if st.session_state.start_flg:
     
     # モード：「日常英会話」
     if st.session_state.mode == ct.MODE_1:
+        st.session_state.chain_basic_conversation = ft.create_chain(ct.SYSTEM_TEMPLATE_BASIC_CONVERSATION)
         # 音声入力を受け取って音声ファイルを作成
         audio_input_file_path = f"{ct.AUDIO_INPUT_DIR}/audio_input_{int(time.time())}.wav"
         ft.record_audio(audio_input_file_path)
@@ -225,6 +264,7 @@ if st.session_state.start_flg:
         with st.spinner('音声入力をテキストに変換中...'):
             transcript = ft.transcribe_audio(audio_input_file_path)
             audio_input_text = transcript.text
+            logger.info(f"音声入力テキスト(日常英会話)：{audio_input_text}")
 
         # 音声入力テキストの画面表示
         with st.chat_message("user", avatar=ct.USER_ICON_PATH):
@@ -267,6 +307,7 @@ if st.session_state.start_flg:
         if not st.session_state.shadowing_audio_input_flg:
             with st.spinner('問題文生成中...'):
                 st.session_state.problem, llm_response_audio = ft.create_problem_and_play_audio()
+                logger.info({"生成された問題文(シャドーイング)": st.session_state.problem})
 
         # 音声入力を受け取って音声ファイルを作成
         st.session_state.shadowing_audio_input_flg = True
@@ -278,6 +319,7 @@ if st.session_state.start_flg:
             # 音声入力ファイルから文字起こしテキストを取得
             transcript = ft.transcribe_audio(audio_input_file_path)
             audio_input_text = transcript.text
+            logger.info(f"音声入力テキスト(シャドーイング)：{audio_input_text}")
 
         # AIメッセージとユーザーメッセージの画面表示
         with st.chat_message("assistant", avatar=ct.AI_ICON_PATH):
@@ -290,16 +332,18 @@ if st.session_state.start_flg:
         st.session_state.messages.append({"role": "user", "content": audio_input_text})
 
         with st.spinner('評価結果の生成中...'):
-            if st.session_state.shadowing_evaluation_first_flg:
-                system_template = ct.SYSTEM_TEMPLATE_EVALUATION.format(
-                    llm_text=st.session_state.problem,
-                    user_text=audio_input_text
-                )
-                st.session_state.chain_evaluation = ft.create_chain(system_template)
-                st.session_state.shadowing_evaluation_first_flg = False
+            # 変更：テンプレートは毎回変わる
+            # if st.session_state.shadowing_evaluation_first_flg:
+            system_template = ct.SYSTEM_TEMPLATE_EVALUATION.format(
+                llm_text=st.session_state.problem,
+                user_text=audio_input_text
+            )
+            st.session_state.chain_evaluation = ft.create_chain(system_template)
+            st.session_state.shadowing_evaluation_first_flg = False
             # 問題文と回答を比較し、評価結果の生成を指示するプロンプトを作成
-            llm_response_evaluation = ft.create_evaluation()
-        
+            llm_response_evaluation = ft.create_evaluation(audio_input_text)
+        logger.info({"生成された評価結果(シャドーイング)": llm_response_evaluation})
+
         # 評価結果のメッセージリストへの追加と表示
         with st.chat_message("assistant", avatar=ct.AI_ICON_PATH):
             st.markdown(llm_response_evaluation)

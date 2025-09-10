@@ -127,7 +127,7 @@ def create_chain(system_template):
     """
     # 英語レベルをログに出力
     logger = logging.getLogger(ct.LOGGER_NAME)
-    logger.info({"英語レベル": st.session_state.englv})
+    logger.info({"モード": st.session_state.mode, "英語レベル": st.session_state.englv})
 
     # system_templateにst.session_state.englvを埋め込むためのcustom_system_template変数を用意
     custom_system_template = system_template.format(englv=st.session_state.englv)
@@ -160,7 +160,6 @@ def create_problem_and_play_audio():
 
     # 問題文を生成するChainを実行し、問題文を取得
     problem = st.session_state.chain_create_problem.predict(input="")
-    logger.info({"生成された問題文": problem})
 
     # LLMからの回答を音声データに変換
     llm_response_audio = st.session_state.openai_obj.audio.speech.create(
@@ -176,13 +175,14 @@ def create_problem_and_play_audio():
     # 音声ファイルの読み上げ
     play_wav(audio_output_file_path, st.session_state.speed)
 
+    # llm_response_audioはどこでも使っていないから不要なのでは？
     return problem, llm_response_audio
 
-def create_evaluation():
+def create_evaluation(audio_input_text):
     """
     ユーザー入力値の評価生成
     """
 
-    llm_response_evaluation = st.session_state.chain_evaluation.predict(input="")
+    llm_response_evaluation = st.session_state.chain_evaluation.predict(input=audio_input_text)
 
     return llm_response_evaluation
