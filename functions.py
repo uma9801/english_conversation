@@ -18,6 +18,7 @@ from langchain.memory import ConversationSummaryBufferMemory
 from langchain_openai import ChatOpenAI
 from langchain.chains import ConversationChain
 import constants as ct
+import logging
 
 def record_audio(audio_input_file_path):
     """
@@ -124,9 +125,17 @@ def create_chain(system_template):
     """
     LLMによる回答生成用のChain作成
     """
+    # 英語レベルをログに出力
+    logger = logging.getLogger(ct.LOGGER_NAME)
+    logger.info({"英語レベル": st.session_state.englv})
+
+    # system_templateにst.session_state.englvを埋め込むためのcustom_system_template変数を用意
+    custom_system_template = system_template.format(englv=st.session_state.englv)
+    # custom_system_templateの内容をログに出力
+    logger.info({"create_chain実行時のテンプレート": custom_system_template})
 
     prompt = ChatPromptTemplate.from_messages([
-        SystemMessage(content=system_template),
+        SystemMessage(content=custom_system_template),
         MessagesPlaceholder(variable_name="history"),
         HumanMessagePromptTemplate.from_template("{input}")
     ])
@@ -147,8 +156,11 @@ def create_problem_and_play_audio():
         openai_obj: OpenAIのオブジェクト
     """
 
+    logger = logging.getLogger(ct.LOGGER_NAME)
+
     # 問題文を生成するChainを実行し、問題文を取得
     problem = st.session_state.chain_create_problem.predict(input="")
+    logger.info({"生成された問題文": problem})
 
     # LLMからの回答を音声データに変換
     llm_response_audio = st.session_state.openai_obj.audio.speech.create(

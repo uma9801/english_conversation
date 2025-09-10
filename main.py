@@ -17,6 +17,9 @@ from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 import functions as ft
 import constants as ct
+# 追加
+import logging
+from initialize import initialize
 
 
 # 各種設定
@@ -24,6 +27,26 @@ load_dotenv()
 st.set_page_config(
     page_title=ct.APP_NAME
 )
+# ログ取得を追加
+logger = logging.getLogger(ct.LOGGER_NAME)
+
+
+############################################################
+# 追加：ログ用初期化処理
+############################################################
+try:
+    initialize()
+except Exception as e:
+    logger.error(f"{ct.INITIALIZE_ERROR_MESSAGE}\n{e}")
+    st.error("\n".join([ct.INITIALIZE_ERROR_MESSAGE, ct.COMMON_ERROR_MESSAGE]))
+    st.stop()
+
+# アプリ起動時のログ出力
+if not "initialized" in st.session_state:
+    st.session_state.initialized = True
+    logger.info(ct.APP_BOOT_MESSAGE)
+
+
 
 # タイトル表示
 st.markdown(f"## {ct.APP_NAME}")
@@ -55,6 +78,9 @@ if "messages" not in st.session_state:
         max_token_limit=1000,
         return_messages=True
     )
+
+    # 初期の英会話レベルを「初級者」に設定
+    st.session_state.englv = ct.ENGLISH_LEVEL_OPTION[0]
 
     # モード「日常英会話」用のChain作成
     st.session_state.chain_basic_conversation = ft.create_chain(ct.SYSTEM_TEMPLATE_BASIC_CONVERSATION)
@@ -147,6 +173,7 @@ if st.session_state.start_flg:
 
             st.session_state.chat_open_flg = True
             st.session_state.dictation_flg = False
+            # st.return()で画面や処理は再実行されるが、se.session_stateの値は保持される
             st.rerun()
         # チャット入力時の処理
         else:

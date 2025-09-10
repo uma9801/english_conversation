@@ -7,23 +7,34 @@ AI_ICON_PATH = "images/ai_icon.jpg"
 AUDIO_INPUT_DIR = "audio/input"
 AUDIO_OUTPUT_DIR = "audio/output"
 PLAY_SPEED_OPTION = [2.0, 1.5, 1.2, 1.0, 0.8, 0.6]
-ENGLISH_LEVEL_OPTION = ["初級者", "中級者", "上級者"]
+ENGLISH_LEVEL_OPTION = ["beginner", "intermediate", "advanced"] # "初級者", "中級者", "上級者"
 
 # 英語講師として自由な会話をさせ、文法間違いをさりげなく訂正させるプロンプト
 SYSTEM_TEMPLATE_BASIC_CONVERSATION = """
     You are a conversational English tutor. Engage in a natural and free-flowing conversation with the user. If the user makes a grammatical error, subtly correct it within the flow of the conversation to maintain a smooth interaction. Optionally, provide an explanation or clarification after the conversation ends.
+    
+    Adjust the vocabulary, grammar, and sentence complexity according to the learner's English level: {englv}.
+    - If {englv} is beginner (CEFR A1–A2), use simple words and basic present tense sentences.
+    - If {englv} is intermediate (CEFR B1–B2), include adjectives, adverbs, or different tenses.
+    - If {englv} is advanced (CEFR C1–C2), use idioms, nuanced expressions, or cultural references.
 """
 
 # 約15語のシンプルな英文生成を指示するプロンプト
 SYSTEM_TEMPLATE_CREATE_PROBLEM = """
-    Generate 1 sentence that reflect natural English used in daily conversations, workplace, and social settings:
+    Generate 1 sentence that reflects natural English used in daily conversations, workplace, and social settings:
     - Casual conversational expressions
     - Polite business language
     - Friendly phrases used among friends
     - Sentences with situational nuances and emotions
     - Expressions reflecting cultural and regional contexts
 
-    Limit your response to an English sentence of approximately 15 words with clear and understandable context.
+    Adjust the vocabulary, grammar, and sentence complexity according to the learner's English level: {englv}.
+    - If {englv} is beginner (CEFR A1–A2), use simple words and basic present tense sentences.
+    - If {englv} is intermediate (CEFR B1–B2), include adjectives, adverbs, or different tenses.
+    - If {englv} is advanced (CEFR C1–C2), use idioms, nuanced expressions, or cultural references.
+
+    The sentence should be around 15 words and have clear, understandable context.
+    Return only the English sentence.
 """
 
 # 問題文と回答を比較し、評価結果の生成を支持するプロンプトを作成
@@ -53,3 +64,20 @@ SYSTEM_TEMPLATE_EVALUATION = """
 
     ユーザーの努力を認め、前向きな姿勢で次の練習に取り組めるような励ましのコメントを含めてください。
 """
+
+
+# ==========================================
+# 追加：ログ出力系
+# ==========================================
+LOG_DIR_PATH = "./logs"
+LOGGER_NAME = "ApplicationLog"
+LOG_FILE = "application.log"
+APP_BOOT_MESSAGE = "アプリが起動されました。"
+
+
+# ==========================================
+# 追加：エラー・警告メッセージ
+# ==========================================
+COMMON_ERROR_MESSAGE = "このエラーが繰り返し発生する場合は、管理者にお問い合わせください。"
+INITIALIZE_ERROR_MESSAGE = "初期化処理に失敗しました。"
+CONVERSATION_LOG_ERROR_MESSAGE = "過去の会話履歴の表示に失敗しました。"
