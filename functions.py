@@ -139,12 +139,13 @@ def create_chain(system_template):
         MessagesPlaceholder(variable_name="history"),
         HumanMessagePromptTemplate.from_template("{input}")
     ])
+    # logger.info({"create_chain実行時のprompt": prompt})
     chain = ConversationChain(
         llm=st.session_state.llm,
         memory=st.session_state.memory,
         prompt=prompt
     )
-
+    # logger.info({"memoryの内容": st.session_state.memory})
     return chain
 
 def create_problem_and_play_audio():
@@ -186,3 +187,33 @@ def create_evaluation(audio_input_text):
     llm_response_evaluation = st.session_state.chain_evaluation.predict(input=audio_input_text)
 
     return llm_response_evaluation
+
+# モードや英会話レベル変更時のフラグ管理関数
+def reset_flags_on_mode_or_level_change():
+    """
+    モードや英会話レベル変更時に各種フラグをリセット
+    """
+    # 英語レベル変更時のみ各first_flgをTrueにして、テンプレートに英語レベルが反映されるようにする
+
+    # 自動でそのモードの処理が実行されないようにする
+    st.session_state.start_flg = False
+    # 「日常英会話」選択時の初期化処理
+    if st.session_state.mode == ct.MODE_1:
+        st.session_state.dictation_flg = False
+        st.session_state.shadowing_flg = False
+    # 「シャドーイング」選択時の初期化処理
+    st.session_state.shadowing_count = 0
+    if st.session_state.mode == ct.MODE_2:
+        st.session_state.dictation_flg = False       
+        if st.session_state.englv != st.session_state.pre_englv:
+            # 英語レベルに合わせたchain再作成用のフラグ管理
+            st.session_state.shadowing_first_flg = True
+    # 「ディクテーション」選択時の初期化処理
+    st.session_state.dictation_count = 0
+    if st.session_state.mode == ct.MODE_3:
+        st.session_state.shadowing_flg = False
+        if st.session_state.englv != st.session_state.pre_englv:
+            # 英語レベルに合わせたchain再作成用のフラグ管理
+            st.session_state.dictation_first_flg = True
+    # チャット入力欄を非表示にする
+    st.session_state.chat_open_flg = False

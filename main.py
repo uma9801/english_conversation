@@ -47,7 +47,6 @@ if not "initialized" in st.session_state:
     logger.info(ct.APP_BOOT_MESSAGE)
 
 
-
 # タイトル表示
 st.markdown(f"## {ct.APP_NAME}")
 
@@ -72,14 +71,14 @@ if "messages" not in st.session_state:
     st.session_state.problem = ""
     
     st.session_state.openai_obj = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    st.session_state.llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.5)
+    st.session_state.llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=1.0)
     st.session_state.memory = ConversationSummaryBufferMemory(
         llm=st.session_state.llm,
         max_token_limit=1000,
         return_messages=True
     )
 
-    # 初期の英会話レベルを「初級者」に設定
+    # 英会話レベルの初期化
     st.session_state.pre_englv = ""
 
     # モード「日常英会話」用のChain作成 → englv反映の為に日常英会話の箇所で作成されるように変更
@@ -100,74 +99,45 @@ with col3:
     st.session_state.mode = st.selectbox(label="モード", options=[ct.MODE_1, ct.MODE_2, ct.MODE_3], label_visibility="collapsed")
     # モードを変更した際の処理。
     if st.session_state.mode != st.session_state.pre_mode:
-        # 自動でそのモードの処理が実行されないようにする
-        st.session_state.start_flg = False
-        # 「日常英会話」選択時の初期化処理
-        if st.session_state.mode == ct.MODE_1:
-            st.session_state.dictation_flg = False
-            st.session_state.shadowing_flg = False
-        # 「シャドーイング」選択時の初期化処理
-        st.session_state.shadowing_count = 0
-        if st.session_state.mode == ct.MODE_2:
-            st.session_state.dictation_flg = False
-        # 「ディクテーション」選択時の初期化処理
-        st.session_state.dictation_count = 0
-        if st.session_state.mode == ct.MODE_3:
-            st.session_state.shadowing_flg = False
-        # チャット入力欄を非表示にする
-        st.session_state.chat_open_flg = False
+        # フラグ処理を関数化して実施
+        ft.reset_flags_on_mode_or_level_change()
+        # 会話履歴（memory）をクリア
+        st.session_state.memory = ConversationSummaryBufferMemory(
+            llm=st.session_state.llm,
+            max_token_limit=1000,
+            return_messages=True
+        )
+        # 画面のチャット履歴をクリア
+        st.session_state.messages = []
 
-    st.session_state.pre_mode = st.session_state.mode
+        st.session_state.pre_mode = st.session_state.mode
+        st.rerun()
 with col4:
     st.session_state.englv = st.selectbox(label="英語レベル", options=ct.ENGLISH_LEVEL_OPTION, label_visibility="collapsed")
-    # 英会話レベルを変更した際の処理。各first_flgをTrueにして、chainが再作成されるようにする
+    # 英会話レベルを変更した際の処理。
     if st.session_state.englv != st.session_state.pre_englv:
-        # 自動でそのモードの処理が実行されないようにする
-        st.session_state.start_flg = False
-        # 「日常英会話」実行中の初期化処理
-        if st.session_state.mode == ct.MODE_1:
-            st.session_state.dictation_flg = False
-            st.session_state.shadowing_flg = False
-        # 「シャドーイング」実行中の初期化処理
-        st.session_state.shadowing_count = 0
-        if st.session_state.mode == ct.MODE_2:
-            st.session_state.dictation_flg = False
-            # 英語レベルに合わせたchain再作成用のフラグ管理
-            st.session_state.shadowing_first_flg = True
-        # 「ディクテーション」実行中の初期化処理
-        st.session_state.dictation_count = 0
-        if st.session_state.mode == ct.MODE_3:
-            st.session_state.shadowing_flg = False
-            # 英語レベルに合わせたchain再作成用のフラグ管理
-            st.session_state.dictation_first_flg = True
-        # チャット入力欄を非表示にする
-        st.session_state.chat_open_flg = False
+        # フラグ処理を関数化して実施
+        ft.reset_flags_on_mode_or_level_change()
 
-    st.session_state.pre_englv = st.session_state.englv
-
-
-# フラグ確認用ログ出力
-logger.info({"状態表示": {
-    "mode": st.session_state.mode,
-    "dictation_flg": st.session_state.dictation_flg,
-    "dictation_count": st.session_state.dictation_count,
-    "shadowing_flg": st.session_state.shadowing_flg,
-    "shadowing_count": st.session_state.shadowing_count,
-    "chat_open_flg": st.session_state.chat_open_flg,
-    "englv": st.session_state.englv
-}})
+        st.session_state.pre_englv = st.session_state.englv
+        st.rerun()
 
 
 with st.chat_message("assistant", avatar="images/ai_icon.jpg"):
-    st.markdown("こちらは生成AIによる音声英会話の練習アプリです。何度も繰り返し練習し、英語力をアップさせましょう。")
+    st.markdown("生成AIが英会話練習をサポートします。繰り返し練習し、英語力をアップさせましょう！")
     st.markdown("**【操作説明】**")
     st.success("""
-    - モードと再生速度を選択し、「英会話開始」ボタンを押して英会話を始めましょう。
-    - モードは「日常英会話」「シャドーイング」「ディクテーション」から選べます。
-    - 発話後、5秒間沈黙することで音声入力が完了します。
-    - 「一時中断」ボタンを押すことで、英会話を一時中断できます。
+    - 再生速度・モード・英語レベルをお好みで選択し、「英会話開始」ボタンを押して英会話を始めましょう。
+    - 途中でモードや英語レベルを変更した時は、改めて「英会話開始」ボタンを押して再開してください。
+    - 発話後に、5秒間沈黙するか「発話終了」ボタンを押すと音声入力が完了します。
     """)
-st.divider()
+    st.markdown("**【モード説明】**")
+    st.info("""
+    - 「日常英会話」AIと音声会話ができ、適宜文法添削を行ってくれます。
+    - 「シャドーイング」AIがランダムな英文を読み上げた後、それを真似て発話してください。AIが評価を行ってくれます。
+    - 「ディクテーション」AIがランダムな英文を読み上げた後、画面下部のチャット欄から英文を真似て入力してください。AIが評価を行ってくれます。
+    """)
+# st.divider()
 
 # メッセージリストの一覧表示
 for message in st.session_state.messages:
@@ -208,10 +178,11 @@ if st.session_state.start_flg:
         if not st.session_state.chat_open_flg:
             with st.spinner('問題文生成中...'):
                 st.session_state.problem, llm_response_audio = ft.create_problem_and_play_audio()
+                logger.info({"生成された問題文(ディクテーション)": st.session_state.problem})
 
             st.session_state.chat_open_flg = True
             st.session_state.dictation_flg = False
-            # st.return()で画面や処理は再実行されるが、se.session_stateの値は保持される
+            # st.rerun()で画面や処理は再実行されるが、se.session_stateの値は保持される
             st.rerun()
         # チャット入力時の処理
         else:
@@ -236,7 +207,7 @@ if st.session_state.start_flg:
                 )
                 st.session_state.chain_evaluation = ft.create_chain(system_template)
                 # 問題文と回答を比較し、評価結果の生成を指示するプロンプトを作成
-                llm_response_evaluation = ft.create_evaluation()
+                llm_response_evaluation = ft.create_evaluation("")
             
             # 評価結果のメッセージリストへの追加と表示
             with st.chat_message("assistant", avatar=ct.AI_ICON_PATH):
@@ -249,6 +220,13 @@ if st.session_state.start_flg:
             st.session_state.dictation_chat_message = ""
             st.session_state.dictation_count += 1
             st.session_state.chat_open_flg = False
+
+            # memoryの内容が評価結果に影響を及ぼすため初期化
+            st.session_state.memory = ConversationSummaryBufferMemory(
+                llm=st.session_state.llm,
+                max_token_limit=1000,
+                return_messages=True
+            )
 
             st.rerun()
 
@@ -264,7 +242,6 @@ if st.session_state.start_flg:
         with st.spinner('音声入力をテキストに変換中...'):
             transcript = ft.transcribe_audio(audio_input_file_path)
             audio_input_text = transcript.text
-            logger.info(f"音声入力テキスト(日常英会話)：{audio_input_text}")
 
         # 音声入力テキストの画面表示
         with st.chat_message("user", avatar=ct.USER_ICON_PATH):

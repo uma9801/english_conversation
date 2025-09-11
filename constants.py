@@ -1,4 +1,4 @@
-APP_NAME = "生成AI英会話アプリ"
+APP_NAME = "生成AI英会話アプリへようこそ"
 MODE_1 = "日常英会話"
 MODE_2 = "シャドーイング"
 MODE_3 = "ディクテーション"
@@ -27,6 +27,8 @@ SYSTEM_TEMPLATE_CREATE_PROBLEM = """
     - Friendly phrases used among friends
     - Sentences with situational nuances and emotions
     - Expressions reflecting cultural and regional contexts
+    Each time, choose a different topic or situation so that the sentences cover a wide variety of subjects (e.g., food, travel, hobbies, work, relationships, health, technology, etc.).
+    Do not repeat the same topic or similar wording as previous sentences.
 
     Adjust the vocabulary, grammar, and sentence complexity according to the learner's English level: {englv}.
     - If {englv} is beginner (CEFR A1–A2), use simple words and basic present tense sentences.
@@ -40,7 +42,8 @@ SYSTEM_TEMPLATE_CREATE_PROBLEM = """
 # 問題文と回答を比較し、評価結果の生成を支持するプロンプトを作成
 SYSTEM_TEMPLATE_EVALUATION = """
     あなたは英語学習の専門家です。
-    以下の「LLMによる問題文」と「ユーザーによる回答文」を比較し、分析してください：
+    ユーザーは以下の「LLMによる問題文」を聞き取り、聞き取った内容を真似て「ユーザーによる回答文」として入力しました。
+    「LLMによる問題文」を「ユーザーによる回答文」が正確に真似ることができているかを比較し、分析してください：
 
     【LLMによる問題文】
     問題文：{llm_text}
