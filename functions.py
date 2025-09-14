@@ -118,7 +118,6 @@ def play_wav(audio_output_file_path, speed=1.0):
         stream.close()
         p.terminate()
     
-    # LLMからの回答の音声ファイルを削除
     os.remove(audio_output_file_path)
 
 def create_chain(system_template):
@@ -139,13 +138,11 @@ def create_chain(system_template):
         MessagesPlaceholder(variable_name="history"),
         HumanMessagePromptTemplate.from_template("{input}")
     ])
-    # logger.info({"create_chain実行時のprompt": prompt})
     chain = ConversationChain(
         llm=st.session_state.llm,
         memory=st.session_state.memory,
         prompt=prompt
     )
-    # logger.info({"memoryの内容": st.session_state.memory})
     return chain
 
 def create_problem_and_play_audio():
@@ -176,7 +173,6 @@ def create_problem_and_play_audio():
     # 音声ファイルの読み上げ
     play_wav(audio_output_file_path, st.session_state.speed)
 
-    # llm_response_audioはどこでも使っていないから不要なのでは？
     return problem, llm_response_audio
 
 def create_evaluation(audio_input_text):
@@ -217,3 +213,22 @@ def reset_flags_on_mode_or_level_change():
             st.session_state.dictation_first_flg = True
     # チャット入力欄を非表示にする
     st.session_state.chat_open_flg = False
+
+
+# 問題文の再度再生用関数
+def replay_problem_audio(llm_response_audio):
+    """
+    問題文の音声ファイルを再度再生
+    
+    Args:
+        llm_response_audio: LLMからの音声データ(MP3形式)
+    """
+
+    logger = logging.getLogger(ct.LOGGER_NAME)
+
+    # 音声ファイルの作成
+    audio_output_file_path = f"{ct.AUDIO_OUTPUT_DIR}/audio_output_{int(time.time())}.wav"
+    save_to_wav(llm_response_audio.content, audio_output_file_path)
+
+    # 音声ファイルの読み上げ
+    play_wav(audio_output_file_path, st.session_state.speed)

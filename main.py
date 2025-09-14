@@ -81,6 +81,9 @@ if "messages" not in st.session_state:
     # 英会話レベルの初期化
     st.session_state.pre_englv = ""
 
+    # 日常会話」モードでの返答再度再生用フラグを初期化
+    st.session_state.repeat_basic_conversation_response_flg = False
+
     # モード「日常英会話」用のChain作成 → englv反映の為に日常英会話の箇所で作成されるように変更
     # st.session_state.chain_basic_conversation = ft.create_chain(ct.SYSTEM_TEMPLATE_BASIC_CONVERSATION)
 
@@ -137,7 +140,6 @@ with st.chat_message("assistant", avatar="images/ai_icon.jpg"):
     - 「シャドーイング」AIがランダムな英文を読み上げた後、それを真似て発話してください。AIが評価を行ってくれます。
     - 「ディクテーション」AIがランダムな英文を読み上げた後、画面下部のチャット欄から英文を真似て入力してください。AIが評価を行ってくれます。
     """)
-# st.divider()
 
 # メッセージリストの一覧表示
 for message in st.session_state.messages:
@@ -177,13 +179,16 @@ if st.session_state.start_flg:
         # チャット入力以外
         if not st.session_state.chat_open_flg:
             with st.spinner('問題文生成中...'):
-                st.session_state.problem, llm_response_audio = ft.create_problem_and_play_audio()
-                logger.info({"生成された問題文(ディクテーション)": st.session_state.problem})
+                st.session_state.problem, st.session_state.llm_response_audio = ft.create_problem_and_play_audio()
 
             st.session_state.chat_open_flg = True
             st.session_state.dictation_flg = False
             # st.rerun()で画面や処理は再実行されるが、se.session_stateの値は保持される
             st.rerun()
+
+        if st.button("問題文を再度再生"):
+            ft.replay_problem_audio(st.session_state.llm_response_audio)
+
         # チャット入力時の処理
         else:
             # チャット欄から入力された場合にのみ評価処理が実行されるようにする
@@ -262,6 +267,9 @@ if st.session_state.start_flg:
             audio_output_file_path = f"{ct.AUDIO_OUTPUT_DIR}/audio_output_{int(time.time())}.wav"
             ft.save_to_wav(llm_response_audio.content, audio_output_file_path)
 
+            # LLMからの返答の音声データを保存
+            st.session_state.llm_response_audio = llm_response_audio
+
         # 音声ファイルの読み上げ
         ft.play_wav(audio_output_file_path, speed=st.session_state.speed)
 
@@ -283,8 +291,11 @@ if st.session_state.start_flg:
         
         if not st.session_state.shadowing_audio_input_flg:
             with st.spinner('問題文生成中...'):
-                st.session_state.problem, llm_response_audio = ft.create_problem_and_play_audio()
-                logger.info({"生成された問題文(シャドーイング)": st.session_state.problem})
+                #ft.create_problem_and_play_audio()関数内で問題文を読み上げ。関数内の読み上げコード：play_wav(audio_output_file_path, st.session_state.speed)
+                st.session_state.problem, st.session_state.llm_response_audio = ft.create_problem_and_play_audio()
+
+        if st.button("問題文を再度再生"):
+            ft.replay_problem_audio(st.session_state.llm_response_audio)
 
         # 音声入力を受け取って音声ファイルを作成
         st.session_state.shadowing_audio_input_flg = True
@@ -296,7 +307,6 @@ if st.session_state.start_flg:
             # 音声入力ファイルから文字起こしテキストを取得
             transcript = ft.transcribe_audio(audio_input_file_path)
             audio_input_text = transcript.text
-            logger.info(f"音声入力テキスト(シャドーイング)：{audio_input_text}")
 
         # AIメッセージとユーザーメッセージの画面表示
         with st.chat_message("assistant", avatar=ct.AI_ICON_PATH):
@@ -309,7 +319,7 @@ if st.session_state.start_flg:
         st.session_state.messages.append({"role": "user", "content": audio_input_text})
 
         with st.spinner('評価結果の生成中...'):
-            # 変更：テンプレートは毎回変わる
+            # 下記if文をコメントアウト（テンプレートへの埋め込みは毎回変わる）
             # if st.session_state.shadowing_evaluation_first_flg:
             system_template = ct.SYSTEM_TEMPLATE_EVALUATION.format(
                 llm_text=st.session_state.problem,
@@ -319,7 +329,6 @@ if st.session_state.start_flg:
             st.session_state.shadowing_evaluation_first_flg = False
             # 問題文と回答を比較し、評価結果の生成を指示するプロンプトを作成
             llm_response_evaluation = ft.create_evaluation(audio_input_text)
-        logger.info({"生成された評価結果(シャドーイング)": llm_response_evaluation})
 
         # 評価結果のメッセージリストへの追加と表示
         with st.chat_message("assistant", avatar=ct.AI_ICON_PATH):
